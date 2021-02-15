@@ -1,14 +1,14 @@
 {
   "name": "@jsvfs/types",
   "version": "0.1.0",
-  "description": "Type for the JavaScript Virtual File System and adapters.",
+  "description": "Types for the JavaScript Virtual File System and adapters.",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
     "prepack": "tsc",
     "test": "tsc --noEmit"
   },
-  "homepage": "https://github.com/ahuggins-nhs/jsvfs/tree/main/packages/jsvfs",
+  "homepage": "https://github.com/ahuggins-nhs/jsvfs/tree/main/packages/types",
   "repository": {
     "type": "git",
     "url": "git@github.com:ahuggins-nhs/jsvfs.git"

@@ -3,8 +3,8 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>@jsvfs/core | @jsvfs</title>
-	<meta name="description" content="Documentation for @jsvfs">
+	<title>@jsvfs/core | JSVFS</title>
+	<meta name="description" content="Documentation for JSVFS">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
 	<script async src="../assets/js/search.js" id="search-script"></script>
@@ -23,7 +23,7 @@
 						<li class="state loading">Preparing search index...</li>
 						<li class="state failure">The search index is not available</li>
 					</ul>
-					<a href="../index.html" class="title">@jsvfs</a>
+					<a href="../index.html" class="title">JSVFS</a>
 				</div>
 				<div class="table-cell" id="tsd-widgets">
 					<div id="tsd-filter">
@@ -52,7 +52,7 @@
 		<div class="container">
 			<ul class="tsd-breadcrumb">
 				<li>
-					<a href="../modules.html">@jsvfs</a>
+					<a href="../modules.html">JSVFS</a>
 				</li>
 				<li>
 					<a href="_jsvfs_core.html">@jsvfs/core</a>
@@ -68,11 +68,46 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>The JavaScript Virtual File System</p>
+						<a href="#jsvfs-core-javascript-virtual-file-system" id="jsvfs-core-javascript-virtual-file-system" style="color: inherit; text-decoration: none;">
+							<h1>JSVFS Core: JavaScript Virtual File System</h1>
+						</a>
+						<p>The core module for JS Virtual File System. Provides the main <code>VirtualFileSystem</code> class with just enough back-end to get started with in-memory file hierarchy.</p>
+						<a href="#installation" id="installation" style="color: inherit; text-decoration: none;">
+							<h2>Installation</h2>
+						</a>
+						<p>Get it from npm:</p>
+						<pre><code class="language-shell"><span style="color: #000000">npm install --save @jsvfs/core</span>
+</code></pre>
+						<a href="#supported-adapters" id="supported-adapters" style="color: inherit; text-decoration: none;">
+							<h2>Supported adapters</h2>
+						</a>
+						<p>Without an adapter which implements a persistent storage, the JS Virtual File System will simply be a non-persistent store. These are the officially supported adapters.</p>
+						<ul>
+							<li>Microsoft Azure Storage <code>@jsvfs/adapter-azure-blob</code></li>
+							<li>Node&#39;s <code>fs</code> module <code>@jsvfs/adapter-node-fs</code></li>
+							<li>Non-persistent noop <code>@jsvfs/adapter-noop</code>; this is included as the default adapter.</li>
+						</ul>
+						<a href="#using-adapters" id="using-adapters" style="color: inherit; text-decoration: none;">
+							<h3>Using adapters</h3>
+						</a>
+						<p>Adapters should be constructed first and passed to the <code>VirtualFileSystem</code> class when constructing it. Make sure to read the documentation closely for a given adapter so that it has the appropriate options for accessing and manipulating the persistent storage it implements.</p>
+						<pre><code class="language-TypeScript"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">NodeFSAdapter</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@jsvfs/adapter-node-fs&#039;</span>
+<span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">VirtualFileSystem</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@jsvfs/core&#039;</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">adapter</span><span style="color: #000000"> = </span><span style="color: #0000FF">new</span><span style="color: #000000"> </span><span style="color: #795E26">NodeFSAdapter</span><span style="color: #000000">({ </span><span style="color: #001080">cwd:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;/my/path/&#039;</span><span style="color: #000000"> })</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">vfs</span><span style="color: #000000"> = </span><span style="color: #0000FF">new</span><span style="color: #000000"> </span><span style="color: #795E26">VirtualFileSystem</span><span style="color: #000000">(</span><span style="color: #001080">adapter</span><span style="color: #000000">)</span>
+</code></pre>
+						<a href="#developing-adapters" id="developing-adapters" style="color: inherit; text-decoration: none;">
+							<h3>Developing adapters</h3>
+						</a>
+						<p>Work on complete documentation for writing adapters is coming. For now, start with the code for <code>@jsvfs/types</code> and read through the interface provided for adapters. Consider the Node <code>fs</code> adapter the reference implementation and take a look at how it implements the interface.</p>
+						<p>If the adapter implements a storage which is widely used, consider forking the jsvfs repository and contributing the adapter as a module. Assuming that this is the route you take, familiarity with TypeScript and Lerna are a must.</p>
+						<p>Otherwise, you can simply release your module on NPM or another package repository. If you&#39;d like it to be discoverable relative to jsvfs, please use the keyword &quot;jsvfs adapter&quot; in your package.json.</p>
+						<a href="#documentation" id="documentation" style="color: inherit; text-decoration: none;">
+							<h2>Documentation</h2>
+						</a>
+						<p>Complete documentation of <code>jsvfs</code> can be found at the <a href="https://ahuggins-nhs.github.io/jsvfs/">jsvfs site</a>.</p>
 					</div>
-					<p>This module is the main library needed to get started using a virtual file system.
-						If you need to snapshot files into the the virtual file system or commit changes to
-					persistent storage, you&#39;ll also need an adapter like <code>@jsvfs/adapter-node-fs</code>.</p>
 				</div>
 			</section>
 			<section class="tsd-panel-group tsd-index-group">
@@ -108,7 +143,7 @@
 					<div class="tsd-signature tsd-kind-icon">Item<span class="tsd-signature-symbol">:</span> <a href="_jsvfs_core.html#realitem" class="tsd-signature-type" data-tsd-kind="Type alias">RealItem</a><span class="tsd-signature-symbol"> | </span><a href="../classes/_jsvfs_core.link.html" class="tsd-signature-type" data-tsd-kind="Class">Link</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/ahuggins-nhs/jsvfs/blob/96a6ca3/packages/core/src/Item.ts#L4">core/src/Item.ts:4</a></li>
+							<li>Defined in <a href="https://github.com/ahuggins-nhs/jsvfs/blob/0b7cc86/packages/core/src/Item.ts#L4">core/src/Item.ts:4</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -118,7 +153,7 @@
 					<div class="tsd-signature tsd-kind-icon">Real<wbr>Item<span class="tsd-signature-symbol">:</span> <a href="../classes/_jsvfs_core.file.html" class="tsd-signature-type" data-tsd-kind="Class">File</a><span class="tsd-signature-symbol"> | </span><a href="../classes/_jsvfs_core.folder.html" class="tsd-signature-type" data-tsd-kind="Class">Folder</a><span class="tsd-signature-symbol"> | </span><a href="../classes/_jsvfs_core.root.html" class="tsd-signature-type" data-tsd-kind="Class">Root</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/ahuggins-nhs/jsvfs/blob/96a6ca3/packages/core/src/Item.ts#L3">core/src/Item.ts:3</a></li>
+							<li>Defined in <a href="https://github.com/ahuggins-nhs/jsvfs/blob/0b7cc86/packages/core/src/Item.ts#L3">core/src/Item.ts:3</a></li>
 						</ul>
 					</aside>
 				</section>

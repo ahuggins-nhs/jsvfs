@@ -1,3 +1,11 @@
+import { JournalEntry } from '@jsvfs/types'
+
+export interface AzBlobJournalEntry extends JournalEntry {
+  error: Error
+}
+
+export type JournalOp = AzBlobJournalEntry['op']
+
 /** Options to connect to an Azure Storage account by connection string. */
 export interface AzureBlobConnectionString {
   /** If provided, the connection string is the only piece needed to access a storage account. */

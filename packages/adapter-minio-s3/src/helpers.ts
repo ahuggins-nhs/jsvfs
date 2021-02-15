@@ -1,31 +1,7 @@
+import { Readable } from 'stream'
 import { PathParseResult } from './types'
 
-/** Function for iterating over a string and ensuring it is a valid container name.
- * See [Microsofts documentation](https://docs.microsoft.com/en-us/rest/api/storageservices/naming-and-referencing-containers--blobs--and-metadata#container-names)
- */
-export function isContainerName (str: string): boolean {
-  const validChars = '-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  const minLength = 3
-  const maxLength = 63
-  const invalidStartChar = '-'
-  const invalidSequence = '--'
-
-  if (
-    typeof str !== 'string' ||
-    str.length < minLength ||
-    str.length > maxLength ||
-    str.includes(invalidSequence) ||
-    str.startsWith(invalidStartChar)
-  ) return false
-
-  for (const char of [...str]) {
-    if (!validChars.includes(char)) return false
-  }
-
-  return true
-}
-
-/** Parses a given path into a container and blob name. */
+/** Parses a given path into a bucket and object name. */
 export function parse (path: string, root: string): PathParseResult {
   if (root === '/') {
     const parts = path.split('/')
@@ -33,18 +9,45 @@ export function parse (path: string, root: string): PathParseResult {
     if (parts[0] === '') {
       return {
         bucketName: parts[1],
-        blobName: parts.slice(2).join('/')
+        objectName: parts.slice(2).join('/')
       }
     }
 
     return {
       bucketName: parts[0],
-      blobName: parts.slice(1).join('/')
+      objectName: parts.slice(1).join('/')
     }
   }
 
   return {
     bucketName: root,
-    blobName: path[0] === '/' ? path.substring(1) : path
+    objectName: path[0] === '/' ? path.substring(1) : path
+  }
+}
+
+/** Convert a Readable stream to an Async Generator. Based on https://www.derpturkey.com/nodejs-async-generators-for-streaming */
+export async function * streamToAsyncGenerator<T> (reader: Readable, chunkSize?: number): AsyncGenerator<T> {
+  const signalEnd = new Promise<void>(resolve => {
+    reader.once('end', resolve)
+  })
+
+  while (!reader.readableEnded) {
+    while (reader.readable) {
+      const val: T = typeof chunkSize === 'number'
+        ? reader.read(chunkSize) ?? reader.read()
+        : reader.read()
+
+      if (typeof val !== 'undefined' && val !== null) {
+        yield val
+      } else {
+        break
+      }
+    }
+
+    const signalReadable = new Promise<void>(resolve => {
+      reader.once('readable', resolve)
+    })
+
+    await Promise.race([signalEnd, signalReadable])
   }
 }

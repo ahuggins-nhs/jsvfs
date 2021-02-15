@@ -1,9 +1,5 @@
 /**
- * If you're looking to use `jsvfs`, you're best to start with `@jsvfs/core`.
- *
- * This module is the default noop backend for `jsvfs` and probably already imported if you have installed `@jsvfs/core`.
- *
- * If you're looking to create new adapters, please use `@jsvfs/types` and look to `@jsvfs/adapter-node-fs` as an example.
+ * [[include:packages/adapter-noop/README.md]]
  * @packageDocumentation
  * @module @jsvfs/adapter-noop
  */

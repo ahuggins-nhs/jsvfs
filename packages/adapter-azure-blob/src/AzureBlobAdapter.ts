@@ -1,7 +1,8 @@
+import { Journal } from '@jsvfs/errors'
 import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential as BlobCredential } from '@azure/storage-blob'
 import { isContainerName, parse } from './helpers'
-import type { Adapter, ItemType, JournalEntry, LinkType, SnapshotEntry } from '@jsvfs/types'
-import type { AzureBlobAdapterOpts } from './types'
+import type { Adapter, ItemType, LinkType, SnapshotEntry } from '@jsvfs/types'
+import type { AzureBlobAdapterOpts, AzBlobJournalEntry, JournalOp } from './types'
 
 /** An adapter for Azure Storage Blobs. */
 export class AzureBlobAdapter implements Adapter {
@@ -31,11 +32,12 @@ export class AzureBlobAdapter implements Adapter {
       this.root = '/'
     }
 
+    this.containerCache = new Map()
     this.include = Array.isArray(opts.include) ? Object.freeze(Array.from(opts.include)) : Object.freeze([])
     this.flushEnabled = opts.flushEnabled ?? false
     this.createIfNotExist = opts.createIfNotExist ?? false
     this.handle = 'azure-blob'
-    this.journal = []
+    this.journal = new Journal()
   }
 
   /** The backing instance of blob service client. */
@@ -51,7 +53,7 @@ export class AzureBlobAdapter implements Adapter {
   /** Enable or disable flushing the file system. */
   flushEnabled: boolean
   /** Log useful messages to the journal about file operations. */
-  journal: JournalEntry[]
+  journal: Journal<AzBlobJournalEntry>
   /** The handle for this adapter, basically an id. Should be something simple but descriptive, like 'node-fs' or 'blob'. */
   handle: 'azure-blob'
 
@@ -64,15 +66,24 @@ export class AzureBlobAdapter implements Adapter {
    * @returns {AsyncGenerator<[string, SnapshotEntry]>} The asynchronous iterable to get the snapshot.
    */
   async * snapshot (): AsyncGenerator<[string, SnapshotEntry]> {
-    for await (const [name, client] of this.listContainers()) {
-      for await (const blobItem of client.listBlobsFlat()) {
-        const contents = await this.readBlob(client, blobItem.name)
-        const snapshotName = this.isGlobal
-          ? '/' + name + '/' + blobItem.name
-          : '/' + blobItem.name
+    for await (const [name, client] of this.listContainers('snapshot')) {
+      try {
+        for await (const blobItem of client.listBlobsFlat()) {
+          const contents = await this.readBlob(client, blobItem.name, 'snapshot')
+          const snapshotName = this.isGlobal
+            ? '/' + name + '/' + blobItem.name
+            : '/' + blobItem.name
 
-        // Need to add glob behavior to include files from the options.
-        yield [snapshotName, { type: 'file', contents }]
+          // Need to add glob behavior to include files from the options.
+          yield [snapshotName, { type: 'file', contents }]
+        }
+      } catch (error) {
+        this.journal.push({
+          level: 'error',
+          message: `Could not list blobs in container '${name}'.`,
+          op: 'snapshot',
+          error
+        })
       }
     }
   }
@@ -80,13 +91,18 @@ export class AzureBlobAdapter implements Adapter {
   /** Create a file or write the contents of a file to persistent storage. */
   async write (path: string, contents: Buffer = Buffer.alloc(0)): Promise<void> {
     const parsed = parse(path, this.root)
-    const container = await this.getContainer(parsed.container)
+    const container = await this.getContainer(parsed.container, 'write')
     const blobClient = container.getBlockBlobClient(parsed.blobName)
 
     try {
       await blobClient.uploadData(contents)
     } catch (error) {
-      // Log error to journal.
+      this.journal.push({
+        level: 'error',
+        message: `Could not upload blob '${parsed.blobName}' to container '${parsed.container}'.`,
+        op: 'write',
+        error
+      })
     }
   }
 
@@ -97,22 +113,27 @@ export class AzureBlobAdapter implements Adapter {
   async link (linkPath: string, linkTarget: string, type: LinkType): Promise<void> {
     const parsedPath = parse(linkPath, this.root)
     const parsedTarget = parse(linkTarget, this.root)
-    const containerFrom = await this.getContainer(parsedTarget.container)
-    const containerTo = await this.getContainer(parsedPath.container)
+    const containerFrom = await this.getContainer(parsedTarget.container, 'link')
+    const containerTo = await this.getContainer(parsedPath.container, 'link')
     const blobFrom = containerFrom.getBlockBlobClient(parsedTarget.blobName)
     const blobTo = containerTo.getBlockBlobClient(parsedPath.blobName)
 
     try {
       await blobTo.syncCopyFromURL(blobFrom.url)
     } catch (error) {
-      // Log error to journal.
+      this.journal.push({
+        level: 'error',
+        message: `Could not copy blob to '${parsedPath.blobName}' in container '${parsedPath.container}' from '${parsedTarget.blobName}' in container '${parsedTarget.container}'.`,
+        op: 'link',
+        error
+      })
     }
   }
 
   /** Remove items from persistent storage. */
   async remove (path: string, type: ItemType): Promise<void> {
     const parsed = parse(path, this.root)
-    const container = await this.getContainer(parsed.container)
+    const container = await this.getContainer(parsed.container, 'remove')
     const blobClient = container.getBlockBlobClient(parsed.blobName)
 
     switch (type) {
@@ -122,7 +143,12 @@ export class AzureBlobAdapter implements Adapter {
         try {
           await blobClient.deleteIfExists()
         } catch (error) {
-          // Log error to journal.
+          this.journal.push({
+            level: 'error',
+            message: `Could not delete blob '${parsed.blobName}' from container '${parsed.container}'.`,
+            op: 'remove',
+            error
+          })
         }
     }
   }
@@ -130,9 +156,7 @@ export class AzureBlobAdapter implements Adapter {
   /** Flush the underlying file system to prepare for a commit. */
   async flush (): Promise<void> {
     if (this.flushEnabled) {
-      for await (const item of this.listContainers()) {
-        const client = item[1]
-
+      for await (const [name, client] of this.listContainers('flush')) {
         for await (const blobItem of client.listBlobsFlat()) {
           const blobClient = client.getBlockBlobClient(blobItem.name)
 
@@ -140,7 +164,12 @@ export class AzureBlobAdapter implements Adapter {
           try {
             await blobClient.deleteIfExists()
           } catch (error) {
-            // Log error to journal.
+            this.journal.push({
+              level: 'error',
+              message: `Could not delete blob '${blobItem.name}' from container '${name}'.`,
+              op: 'flush',
+              error
+            })
           }
         }
       }
@@ -148,29 +177,40 @@ export class AzureBlobAdapter implements Adapter {
   }
 
   /** Reads a blob from blob storage. */
-  private async readBlob (container: string | ContainerClient, blobName: string): Promise<Buffer> {
-    const containerClient = typeof container === 'string' ? await this.getContainer(container) : container
+  private async readBlob (container: string | ContainerClient, blobName: string, op: JournalOp): Promise<Buffer> {
+    const containerClient = typeof container === 'string' ? await this.getContainer(container, 'snapshot') : container
     const blobClient = containerClient.getBlockBlobClient(blobName)
 
     try {
       return await blobClient.downloadToBuffer()
     } catch (error) {
+      this.journal.push({
+        level: 'error',
+        message: `Could not read blob '${blobName}' from container '${containerClient.containerName}'.`,
+        op,
+        error
+      })
       return Buffer.alloc(0)
     }
   }
 
   /** Get or initialize the given container by name. */
-  private async getContainer (name: string, exists: boolean = false): Promise<ContainerClient> {
+  private async getContainer (name: string, op: JournalOp, exists: boolean = false): Promise<ContainerClient> {
     let containerClient = this.containerCache.get(name)
 
     if (typeof containerClient === 'undefined') {
-      containerClient = this.blobService.getContainerClient(this.root)
+      containerClient = this.blobService.getContainerClient(name)
 
       if (!exists && this.createIfNotExist) {
         try {
           await containerClient.createIfNotExists()
         } catch (error) {
-          // We don't care about this error. Hide it.
+          this.journal.push({
+            level: 'error',
+            message: `Could not create blob container '${name}'.`,
+            op,
+            error
+          })
         }
       }
 
@@ -181,16 +221,16 @@ export class AzureBlobAdapter implements Adapter {
   }
 
   /** List the containers for this instance and optionally cache them. */
-  private async * listContainers (): AsyncGenerator<[string, ContainerClient]> {
+  private async * listContainers (op: JournalOp): AsyncGenerator<[string, ContainerClient]> {
     if (this.containerCache.size === 0) {
       if (this.isGlobal) {
         for await (const containerItem of this.blobService.listContainers()) {
           if (typeof containerItem.deleted === 'undefined' || !containerItem.deleted) {
-            yield [containerItem.name, await this.getContainer(containerItem.name, true)]
+            yield [containerItem.name, await this.getContainer(containerItem.name, op, true)]
           }
         }
       } else {
-        yield [this.root, await this.getContainer(this.root)]
+        yield [this.root, await this.getContainer(this.root, op)]
       }
     } else {
       for (const item of this.containerCache.entries()) {

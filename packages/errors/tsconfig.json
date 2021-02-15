@@ -6,11 +6,6 @@
       "ES2020",
       "ESNext.AsyncIterable"
     ],
-    "declaration": true,
-    "sourceMap": true,
-    "typeRoots": [
-      "node_modules/@types",
-      "types"
-    ]
+    "declaration": true
   }
 }

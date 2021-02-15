@@ -1,10 +1,48 @@
 /**
- * If you're looking to use `jsvfs`, you're best to start with `@jsvfs/core`.
- *
- * This module implements types and interfaces that can be used for developing `jsvfs` itself and adapters for it.
+ * [[include:packages/types/README.md]]
  * @packageDocumentation
  * @module @jsvfs/types
  */
+
+export const JSON_SCHEMA = {
+  JournalEntry: {
+    type: 'object',
+    required: [
+      'op',
+      'level',
+      'message'
+    ],
+    properties: {
+      id: {
+        type: ['string', 'number']
+      },
+      op: {
+        type: 'string',
+        enum: [
+          'snapshot',
+          'write',
+          'mkdir',
+          'link',
+          'remove',
+          'flush'
+        ]
+      },
+      level: {
+        type: 'string',
+        enum: [
+          'info',
+          'warn',
+          'error',
+          'crit'
+        ]
+      },
+      message: {
+        type: 'string'
+      }
+    },
+    additionalProperties: true
+  }
+}
 
 /** An adapter for the underlying persistent file storage.
  *
@@ -46,7 +84,7 @@ export type SnapshotEntry = SnapshotFileEntry | SnapshotFolderEntry | SnapshotLi
 
 /** Metadata about an event for the adapter journal. */
 export interface JournalEntry {
-  id: string | number
+  id?: string | number
   op: 'snapshot' | 'write' | 'mkdir' | 'link' | 'remove' | 'flush'
   level: 'info' | 'warn' | 'error' | 'crit'
   message: string

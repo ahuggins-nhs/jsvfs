@@ -13,7 +13,7 @@
     "prepack": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "homepage": "https://github.com/ahuggins-nhs/jsvfs/tree/main/packages/jsvfs",
+  "homepage": "https://github.com/ahuggins-nhs/jsvfs/tree/main/packages/core",
   "repository": {
     "type": "git",
     "url": "git@github.com:ahuggins-nhs/jsvfs.git"
