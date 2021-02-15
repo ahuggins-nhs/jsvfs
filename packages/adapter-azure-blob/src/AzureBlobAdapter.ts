@@ -32,6 +32,7 @@ export class AzureBlobAdapter implements Adapter {
       this.root = '/'
     }
 
+    this.containerCache = new Map()
     this.include = Array.isArray(opts.include) ? Object.freeze(Array.from(opts.include)) : Object.freeze([])
     this.flushEnabled = opts.flushEnabled ?? false
     this.createIfNotExist = opts.createIfNotExist ?? false

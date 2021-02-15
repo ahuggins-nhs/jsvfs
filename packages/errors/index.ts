@@ -4,9 +4,12 @@
  * @module @jsvfs/errors
  */
 import { JournalEntry, JSON_SCHEMA } from '@jsvfs/types'
-import Ajv, { ValidateFunction } from 'ajv'
+import Ajv from 'ajv'
 
 type JournalOp = JournalEntry['op']
+
+const ajv = new Ajv({ allErrors: true, allowUnionTypes: true })
+const validate = ajv.compile<JournalEntry>(JSON_SCHEMA.JournalEntry)
 
 /** Journal class for error handling, extending built-in Array class. */
 export class Journal<T extends JournalEntry> extends Array<T> {
@@ -21,16 +24,14 @@ export class Journal<T extends JournalEntry> extends Array<T> {
       super()
     }
 
-    const ajv = new Ajv({ allErrors: true })
-    this.validate = ajv.compile(JSON_SCHEMA.JournalEntry)
-
     if (inputs.length > 0 && typeof inputs[0] === 'object') {
       this.push(...inputs as T[])
     }
   }
 
-  /** Journal entry validator function. */
-  private readonly validate: ValidateFunction<T>
+  private validate (data: any): data is T {
+    return validate(data)
+  }
 
   /** Get all journal entries matching an operation and optionally a certain level. */
   getEntries (op: JournalOp | 'all', ...level: Array<JournalEntry['level']>): T[] {
@@ -79,7 +80,7 @@ export class Journal<T extends JournalEntry> extends Array<T> {
 
   /** List all warning entries. */
   get warnings (): T[] {
-    return this.getEntries('all', 'crit')
+    return this.getEntries('all', 'warn')
   }
 
   /** Get critical errors by operation name. */
